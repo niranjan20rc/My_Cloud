@@ -185,6 +185,11 @@ function App() {
         {items.length === 0 && <li>No items stored yet</li>}
         {items.map(item => (
           <li key={item._id} style={{ marginBottom: 8 }}>
+            <a href={`http://localhost:5000/items/${item._id}/content`}>
+  {`http://localhost:5000/items/${item._id}/content`}
+ </a>
+             <br/>
+             <br/>
             <span
               style={{ cursor: 'pointer', color: 'blue', textDecoration: 'underline' }}
               onClick={() => handleSelect(item._id)}
@@ -198,6 +203,8 @@ function App() {
             <button onClick={() => handleDelete(item._id)} style={{ marginLeft: 4 }}>
               Delete
             </button>
+            <br/>
+            <br/>
           </li>
         ))}
       </ul>

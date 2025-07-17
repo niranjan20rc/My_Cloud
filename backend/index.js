@@ -1,10 +1,11 @@
 import 'dotenv/config';
-import express  from 'express'
-import mongoose from 'mongoose'
-import cors     from 'cors'
-import getRandom from "get-randomizer"
+import express from 'express';
+import mongoose from 'mongoose';
+import cors from 'cors';
+import getRandom from 'get-randomizer';
+
 const app = express();
-const port = 5000 || process.env.PORT;
+const port = process.env.PORT || 5000;
 
 app.use(express.json());
 app.use(cors());
@@ -16,14 +17,11 @@ mongoose.connect(link, {
 });
 
 const itemSchema = new mongoose.Schema({
-  name: String,    
+  name: String,
   content: String,
-  mylink:String,  
+  mylink: String,
 });
-
 const Item = mongoose.model('Item', itemSchema);
-
-
 
 // CREATE
 app.post('/items', async (req, res) => {
@@ -34,7 +32,7 @@ app.post('/items', async (req, res) => {
     const id = getRandom(100, 1000).toString();
     const mylink = name + id;
 
-    const item = new Item({ name, content, mylink });  // assign mylink here
+    const item = new Item({ name, content, mylink });
     await item.save();
 
     console.log('Created mylink:', mylink);
@@ -45,12 +43,18 @@ app.post('/items', async (req, res) => {
   }
 });
 
+// Get all mylink values
+app.get('/neon', async (req, res) => {
+  try {
+    const links = await Item.find().select('mylink -_id');
+    res.json(links);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server error');
+  }
+});
 
-app.get("/neon",async(req,res)=>{
-  res.json(await Item.find().select("mylink"));
-})
-
-// READ all
+// READ all - return _id and name
 app.get('/items', async (req, res) => {
   try {
     const items = await Item.find().select('_id name');
@@ -61,12 +65,25 @@ app.get('/items', async (req, res) => {
   }
 });
 
-// READ one
+// READ full item metadata by ID
 app.get('/items/:id', async (req, res) => {
   try {
     const item = await Item.findById(req.params.id);
     if (!item) return res.status(404).send('Not found');
-    res.set('Content-Type', 'text/html').send(item.content);
+    res.json(item);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server error');
+  }
+});
+
+// READ only HTML content by ID
+app.get('/items/:id/content', async (req, res) => {
+  try {
+    const item = await Item.findById(req.params.id).select('content');
+    if (!item) return res.status(404).send('Item not found');
+    res.set('Content-Type', 'text/html');
+    res.send(item.content);
   } catch (err) {
     console.error(err);
     res.status(500).send('Server error');
@@ -77,8 +94,8 @@ app.get('/items/:id', async (req, res) => {
 app.put('/items/:id', async (req, res) => {
   try {
     const { name, content } = req.body;
-    
     if (!name || !content) return res.status(400).send('Name & HTML content required');
+
     const item = await Item.findByIdAndUpdate(
       req.params.id,
       { name, content },
