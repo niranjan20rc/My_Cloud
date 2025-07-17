@@ -1,14 +1,16 @@
+require('dotenv').config();
 import express  from 'express'
 import mongoose from 'mongoose'
 import cors     from 'cors'
 import getRandom from "get-randomizer"
 const app = express();
-const port = 5000;
+const port = 5000 || process.env.PORT;
 
 app.use(express.json());
 app.use(cors());
 
-mongoose.connect('mongodb://localhost:27017/crudApp', {
+const link = process.env.DB_URI || 'mongodb://localhost:27017/crudApp';
+mongoose.connect(link, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
