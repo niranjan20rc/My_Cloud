@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 
+
+const API=""
+
 function App() {
   const [websiteName, setWebsiteName] = useState('');
   const [htmlContent, setHtmlContent] = useState('');
