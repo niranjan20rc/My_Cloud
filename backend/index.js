@@ -1,116 +1,105 @@
-const express = require('express');
-const cors = require('cors');
-const multer = require('multer');
-const mongoose = require('mongoose');
-
+import express  from 'express'
+import mongoose from 'mongoose'
+import cors     from 'cors'
+import getRandom from "get-randomizer"
 const app = express();
-const PORT = 4000;
+const port = 5000;
 
-app.use(cors());
 app.use(express.json());
+app.use(cors());
 
-// MongoDB connection URI (adjust as needed)
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/site_db';
-
-mongoose
-  .connect(MONGODB_URI)
-  .then(() => console.log('MongoDB connected'))
-  .catch((err) => console.error('MongoDB connection error:', err));
-
-// Site schema & model
-const siteSchema = new mongoose.Schema({
-  name: { type: String, unique: true, required: true },
-  domain: String,
-  htmlContent: { type: String, default: '' }, // store raw HTML here
+mongoose.connect('mongodb://localhost:27017/crudApp', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
 });
 
-const Site = mongoose.model('Site', siteSchema);
-
-// Multer setup to store uploaded file in memory (buffer)
-const storage = multer.memoryStorage();
-const fileFilter = (req, file, cb) => {
-  if (file.mimetype === 'text/html' || file.originalname.endsWith('.html')) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only HTML files allowed'));
-  }
-};
-const upload = multer({ storage, fileFilter });
-
-// Routes
-
-// Get all sites metadata (without HTML content)
-app.get('/api/sites', async (req, res) => {
-  try {
-    const sites = await Site.find({}, '_id name domain').lean();
-    res.json(sites);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to get sites' });
-  }
+const itemSchema = new mongoose.Schema({
+  name: String,    
+  content: String,
+  mylink:String,  
 });
 
-// Create new site
-app.post('/api/sites', async (req, res) => {
-  const { name } = req.body;
-  if (!name) return res.status(400).json({ error: 'Name required' });
+const Item = mongoose.model('Item', itemSchema);
 
+
+
+// CREATE
+app.post('/items', async (req, res) => {
   try {
-    const existing = await Site.findOne({ name });
-    if (existing) return res.status(400).json({ error: 'Site name already exists' });
+    const { name, content } = req.body;
+    if (!name || !content) return res.status(400).send('Name & HTML content required');
 
-    const newSite = new Site({ name, domain: name });
-    await newSite.save();
+    const id = getRandom(100, 1000).toString();
+    const mylink = name + id;
 
-    res.json({ _id: newSite._id, name: newSite.name, domain: newSite.domain });
+    const item = new Item({ name, content, mylink });  // assign mylink here
+    await item.save();
+
+    console.log('Created mylink:', mylink);
+    res.status(201).json(item);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to create site' });
-  }
-});
-
-// Deploy HTML file (upload and save raw HTML to DB)
-app.post('/api/sites/:id/deploy', upload.single('index'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No HTML file uploaded' });
-
-  try {
-    const site = await Site.findById(req.params.id);
-    if (!site) return res.status(404).json({ error: 'Site not found' });
-
-    site.htmlContent = req.file.buffer.toString('utf-8'); // raw HTML string
-    await site.save();
-
-    res.json({ message: 'Deploy complete' });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to deploy HTML' });
-  }
-});
-
-// Delete site
-app.delete('/api/sites/:id', async (req, res) => {
-  try {
-    const result = await Site.findByIdAndDelete(req.params.id);
-    if (!result) return res.status(404).json({ error: 'Site not found' });
-
-    res.json({ message: 'Site deleted' });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to delete site' });
-  }
-});
-
-// Serve HTML content of a site by id
-app.get('/sites/:id', async (req, res) => {
-  try {
-    const site = await Site.findById(req.params.id);
-    if (!site || !site.htmlContent) return res.status(404).send('Site not found or no content deployed');
-
-    res.setHeader('Content-Type', 'text/html');
-    res.send(site.htmlContent);
-  } catch (err) {
+    console.error(err);
     res.status(500).send('Server error');
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+
+app.get("/neon",async(req,res)=>{
+  res.json(await Item.find().select("mylink"));
+})
+
+// READ all
+app.get('/items', async (req, res) => {
+  try {
+    const items = await Item.find().select('_id name');
+    res.json(items);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server error');
+  }
 });
 
+// READ one
+app.get('/items/:id', async (req, res) => {
+  try {
+    const item = await Item.findById(req.params.id);
+    if (!item) return res.status(404).send('Not found');
+    res.set('Content-Type', 'text/html').send(item.content);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server error');
+  }
+});
 
+// UPDATE
+app.put('/items/:id', async (req, res) => {
+  try {
+    const { name, content } = req.body;
+    
+    if (!name || !content) return res.status(400).send('Name & HTML content required');
+    const item = await Item.findByIdAndUpdate(
+      req.params.id,
+      { name, content },
+      { new: true }
+    );
+    if (!item) return res.status(404).send('Not found');
+    res.json(item);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server error');
+  }
+});
+
+// DELETE
+app.delete('/items/:id', async (req, res) => {
+  try {
+    const item = await Item.findByIdAndDelete(req.params.id);
+    if (!item) return res.status(404).send('Not found');
+    res.status(204).send();
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server error');
+  }
+});
+
+app.listen(port, () => console.log(`Server running at http://localhost:${port}`));
