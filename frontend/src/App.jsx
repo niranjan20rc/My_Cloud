@@ -1,33 +1,33 @@
 import React, { useState, useEffect } from 'react';
 
-
-const API=""
+const API_BASE = `https://my-cloud-2.onrender.com`;
 
 function App() {
   const [websiteName, setWebsiteName] = useState('');
   const [htmlContent, setHtmlContent] = useState('');
   const [items, setItems] = useState([]);
   const [editingId, setEditingId] = useState(null);
+  const [loading, setLoading] = useState(false); // NEW
 
-  // Fetch all items on component mount and after updates
   useEffect(() => {
     fetchItems();
   }, []);
 
-  // Fetch list of items (id, name, mylink)
   const fetchItems = async () => {
     try {
-      const res = await fetch('http://localhost:5000/items');
+      setLoading(true); // Start loading
+      const res = await fetch(`${API_BASE}/items`);
       if (!res.ok) throw new Error('Failed to fetch items');
       const data = await res.json();
       setItems(data);
     } catch (err) {
       console.error(err);
       alert('Failed to load items');
+    } finally {
+      setLoading(false); // End loading
     }
   };
 
-  // Submit new item or update existing item
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!websiteName.trim() || !htmlContent.trim()) {
@@ -35,10 +35,11 @@ function App() {
     }
 
     try {
+      setLoading(true); // Start loading
       const method = editingId ? 'PUT' : 'POST';
       const url = editingId
-        ? `http://localhost:5000/items/${editingId}`
-        : 'http://localhost:5000/items';
+        ? `${API_BASE}/items/${editingId}`
+        : `${API_BASE}/items`;
 
       const res = await fetch(url, {
         method,
@@ -60,18 +61,18 @@ function App() {
     } catch (err) {
       console.error(err);
       alert(`Save failed: ${err.message}`);
+    } finally {
+      setLoading(false); // End loading
     }
   };
 
-  // Load item content for editing
   const handleEdit = async (id) => {
     try {
-      // Fetch the HTML content by id
-      const res = await fetch(`http://localhost:5000/items/${id}`);
+      setLoading(true);
+      const res = await fetch(`${API_BASE}/items/${id}`);
       if (!res.ok) throw new Error('Failed to fetch item content');
       const content = await res.text();
 
-      // Find the name from the items list
       const item = items.find(i => i._id === id);
       if (!item) throw new Error('Item not found');
 
@@ -81,32 +82,35 @@ function App() {
     } catch (err) {
       console.error(err);
       alert(`Failed to enter edit mode: ${err.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Delete item by id
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this item?')) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/items/${id}`, { method: 'DELETE' });
+      setLoading(true);
+      const res = await fetch(`${API_BASE}/items/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Delete failed');
       await fetchItems();
       alert('Deleted');
     } catch (err) {
       console.error(err);
       alert(`Delete failed: ${err.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Open stored HTML content in a new tab/window
   const handleSelect = async (id) => {
     try {
-      const res = await fetch(`http://localhost:5000/items/${id}`);
+      setLoading(true);
+      const res = await fetch(`${API_BASE}/items/${id}`);
       if (!res.ok) throw new Error('Failed to fetch HTML content');
       const htmlText = await res.text();
 
-      // Open new window and write the HTML content
       const newWindow = window.open();
       if (!newWindow) {
         alert('Popup blocked! Please allow popups for this site.');
@@ -117,12 +121,28 @@ function App() {
     } catch (err) {
       console.error(err);
       alert(`Failed to open: ${err.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div style={{ padding: 20, fontFamily: 'Arial, sans-serif' }}>
       <h2>{editingId ? 'Edit Item' : 'Store HTML Content'}</h2>
+
+      {loading && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{
+            border: '4px solid #f3f3f3',
+            borderTop: '4px solid #3498db',
+            borderRadius: '50%',
+            width: 30,
+            height: 30,
+            animation: 'spin 1s linear infinite',
+            margin: '10px auto'
+          }} />
+        </div>
+      )}
 
       <form onSubmit={handleSubmit}>
         <input
@@ -142,7 +162,7 @@ function App() {
           style={{ fontFamily: 'monospace', fontSize: 14 }}
         />
         <br />
-        <button type="submit" style={{ marginTop: 10 }}>
+        <button type="submit" style={{ marginTop: 10 }} disabled={loading}>
           {editingId ? 'Update Item' : 'Save HTML'}
         </button>
         {editingId && (
@@ -181,6 +201,16 @@ function App() {
           </li>
         ))}
       </ul>
+
+      {/* Add spinner keyframes */}
+      <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}
+      </style>
     </div>
   );
 }
