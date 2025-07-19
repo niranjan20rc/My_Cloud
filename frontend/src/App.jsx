@@ -15,7 +15,7 @@ function App() {
 
   const fetchItems = async () => {
     try {
-      setLoading(true); // Start loading
+      setLoading(true); 
       const res = await fetch(`${API_BASE}/items`);
       if (!res.ok) throw new Error('Failed to fetch items');
       const data = await res.json();
@@ -24,7 +24,7 @@ function App() {
       console.error(err);
       alert('Failed to load items');
     } finally {
-      setLoading(false); // End loading
+      setLoading(false); 
     }
   };
 
@@ -35,7 +35,7 @@ function App() {
     }
 
     try {
-      setLoading(true); // Start loading
+      setLoading(true); 
       const method = editingId ? 'PUT' : 'POST';
       const url = editingId
         ? `${API_BASE}/items/${editingId}`
@@ -62,7 +62,7 @@ function App() {
       console.error(err);
       alert(`Save failed: ${err.message}`);
     } finally {
-      setLoading(false); // End loading
+      setLoading(false);
     }
   };
 
@@ -209,7 +209,6 @@ function App() {
         ))}
       </ul>
 
-      {/* Add spinner keyframes */}
       <style>
         {`
           @keyframes spin {
